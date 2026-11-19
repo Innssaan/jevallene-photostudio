@@ -20,7 +20,6 @@ import {
   X,
 } from "lucide-react";
 import { AuthModal } from "@/components/auth/AuthModal";
-import { InstallAppButton } from "@/components/layout/InstallAppButton";
 import { MobileAppNav } from "@/components/layout/MobileAppNav";
 import { SplashScreen } from "@/components/layout/SplashScreen";
 import {
@@ -321,7 +320,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </svg>
             </a>
           </div>
-          <InstallAppButton locale={locale} />
           <p className="text-[11px] font-semibold text-brand-textMuted text-center">
             ©Jevallene by Innssaan
           </p>

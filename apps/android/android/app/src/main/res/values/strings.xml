@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Jevallene</string>
-    <string name="title_activity_main">Jevallene</string>
+    <string name="app_name">Jevallene PhotoStudio App</string>
+    <string name="title_activity_main">Jevallene PhotoStudio App</string>
     <string name="package_name">id.my.innssaan.jevallene</string>
     <string name="custom_url_scheme">id.my.innssaan.jevallene</string>
 </resources>

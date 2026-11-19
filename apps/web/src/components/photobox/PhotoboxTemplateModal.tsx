@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { Check, LayoutGrid, Search, X } from "lucide-react";
+import { Check, LayoutGrid, Lock, Search, X } from "lucide-react";
 import {
   BUILTIN_TEMPLATES,
   getSlotCount,
+  isTemplateLocked,
   type TemplateCategory,
 } from "@photostudio/shared-types";
 import { TemplateCanvasPreview } from "@/components/templates/TemplateCanvasPreview";
@@ -44,6 +45,7 @@ export function PhotoboxTemplateModal({
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return BUILTIN_TEMPLATES.filter((tpl) => {
+      if (category === "all" && !q && tpl.category === "birthday_special") return false;
       if (category !== "all" && tpl.category !== category) return false;
       if (!q) return true;
       const title = (locale === "id" ? tpl.title_id : tpl.title_en).toLowerCase();
@@ -145,27 +147,40 @@ export function PhotoboxTemplateModal({
               const title = locale === "id" ? tpl.title_id : tpl.title_en;
               const shots = getSlotCount(tpl.document);
               const isSelected = tpl.id === selectedTemplateId;
+              const locked = isTemplateLocked(tpl);
               return (
                 <button
                   key={tpl.id}
                   type="button"
+                  disabled={locked}
                   onClick={() => {
+                    if (locked) return;
                     onSelect(tpl.id);
                     onClose();
                   }}
-                  className={`group text-left rounded-2xl border p-2 sm:p-2.5 transition-all active:scale-[0.98] flex flex-col gap-2 ${
-                    isSelected
-                      ? "border-brand-accent bg-brand-accentSoft/40 ring-2 ring-brand-accent"
-                      : "border-brand-border bg-brand-bg hover:border-brand-accent/70"
+                  className={`group text-left rounded-2xl border p-2 sm:p-2.5 transition-all flex flex-col gap-2 ${
+                    locked
+                      ? "border-brand-border bg-brand-bg/70 opacity-80 cursor-not-allowed"
+                      : isSelected
+                        ? "border-brand-accent bg-brand-accentSoft/40 ring-2 ring-brand-accent active:scale-[0.98]"
+                        : "border-brand-border bg-brand-bg hover:border-brand-accent/70 active:scale-[0.98]"
                   }`}
                 >
                   <div className="relative w-full aspect-[3/4] rounded-xl bg-brand-surfaceMuted/60 flex items-center justify-center overflow-hidden p-2">
                     <TemplateCanvasPreview
                       document={tpl.document}
                       scale={0.18}
-                      className="max-h-full max-w-full shadow-sm"
+                      className={`max-h-full max-w-full shadow-sm ${locked ? "blur-[2px] brightness-75" : ""}`}
                     />
-                    {isSelected && (
+                    {locked && (
+                      <div className="absolute inset-0 bg-black/35 flex flex-col items-center justify-center gap-1 p-2 text-center">
+                        <Lock className="w-5 h-5 text-white" />
+                        <span className="px-2 py-0.5 rounded-full bg-black/80 text-white text-[10px] font-bold">
+                          {locale === "id" ? "Terbuka 21 Nov" : "Unlocks Nov 21"}
+                        </span>
+                      </div>
+                    )}
+                    {isSelected && !locked && (
                       <span className="absolute top-2 right-2 w-6 h-6 rounded-full bg-brand-accent text-brand-onAccent flex items-center justify-center shadow">
                         <Check className="w-3.5 h-3.5" />
                       </span>

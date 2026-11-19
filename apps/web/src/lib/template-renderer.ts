@@ -320,8 +320,46 @@ function drawTextLayer(
   const totalH = (lines.length - 1) * lineHeight;
   const startY = anchorY - totalH / 2;
 
+  if (layer.shadow) {
+    const m = layer.shadow.trim().match(/^(-?\d+(?:\.\d+)?)px\s+(-?\d+(?:\.\d+)?)px\s+(\d+(?:\.\d+)?)px\s+(.+)$/i);
+    if (m) {
+      ctx.shadowOffsetX = Number(m[1]);
+      ctx.shadowOffsetY = Number(m[2]);
+      ctx.shadowBlur = Number(m[3]);
+      ctx.shadowColor = m[4];
+    } else {
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 3;
+      ctx.shadowBlur = 0;
+      ctx.shadowColor = layer.shadow;
+    }
+  }
+
+  let outlineWidth = 0;
+  let outlineColor = "";
+  if (layer.outline) {
+    const om = layer.outline.trim().match(/^(\d+(?:\.\d+)?)px\s+(.+)$/i);
+    if (om) {
+      outlineWidth = Number(om[1]);
+      outlineColor = om[2];
+    } else {
+      outlineWidth = Math.max(4, Math.round(layer.fontSize * 0.14));
+      outlineColor = layer.outline.trim();
+    }
+  }
+
   lines.forEach((line, idx) => {
-    ctx.fillText(line, anchorX, startY + idx * lineHeight, layer.width);
+    const ly = startY + idx * lineHeight;
+    if (outlineWidth > 0 && outlineColor) {
+      ctx.save();
+      ctx.lineJoin = "round";
+      ctx.miterLimit = 2;
+      ctx.lineWidth = outlineWidth;
+      ctx.strokeStyle = outlineColor;
+      ctx.strokeText(line, anchorX, ly, layer.width);
+      ctx.restore();
+    }
+    ctx.fillText(line, anchorX, ly, layer.width);
   });
   ctx.restore();
 }
@@ -358,7 +396,9 @@ function drawMandatoryWatermark(
 
   const label =
     style === "italic" ? MANDATORY_WATERMARK_BRAND : MANDATORY_WATERMARK_BRAND.toUpperCase();
-  const fgColor = isLightText ? "rgba(250, 250, 250, 0.84)" : "rgba(24, 24, 27, 0.72)";
+  const fgColor = isLightText ? "rgba(255, 255, 255, 0.94)" : "rgba(24, 24, 27, 0.88)";
+  const outlineColor = isLightText ? "rgba(15, 23, 42, 0.68)" : "rgba(255, 255, 255, 0.78)";
+  const outlineWidth = Math.max(2.5, Math.round(fontSize * 0.16));
 
   let x = width - padX;
   let y = height - padY;
@@ -454,8 +494,13 @@ function drawMandatoryWatermark(
   }
 
   ctx.fillStyle = fgColor;
-  ctx.shadowColor = isLightText ? "rgba(0, 0, 0, 0.4)" : "rgba(255, 255, 255, 0.45)";
+  ctx.shadowColor = isLightText ? "rgba(0, 0, 0, 0.45)" : "rgba(255, 255, 255, 0.5)";
   ctx.shadowBlur = 4;
+  ctx.lineJoin = "round";
+  ctx.miterLimit = 2;
+  ctx.lineWidth = outlineWidth;
+  ctx.strokeStyle = outlineColor;
+  ctx.strokeText(label, x, y);
   ctx.fillText(label, x, y);
   ctx.restore();
 }

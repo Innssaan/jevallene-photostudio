@@ -15,6 +15,9 @@ import {
 import {
   BUILTIN_TEMPLATES,
   getSlotCount,
+  getTemplateAddedTimestamp,
+  isTemplateLocked,
+  isTemplateNew,
   type FilterPreset,
   type TemplateCategory,
   type TemplatePreset,
@@ -41,6 +44,7 @@ const CATEGORIES: { id: "all" | TemplateCategory; label: string }[] = [
   { id: "tiktok_story", label: "TikTok Story" },
   { id: "tiktok_feed", label: "TikTok Feed" },
   { id: "collage", label: "Collage" },
+  { id: "birthday_special", label: "Innssaan Birthday 🎂" },
 ];
 
 function TemplatesLibraryContent() {
@@ -54,6 +58,7 @@ function TemplatesLibraryContent() {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [poppingFavId, setPoppingFavId] = useState<string | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<TemplatePreset | null>(null);
+  const [nowMs, setNowMs] = useState<number>(() => Date.now());
 
   // Detailed Preview Modal state
   const [showSamplePhotos, setShowSamplePhotos] = useState<boolean>(true);
@@ -61,6 +66,7 @@ function TemplatesLibraryContent() {
 
   useEffect(() => {
     setFavorites(getFavoriteTemplateIds());
+    setNowMs(Date.now());
   }, []);
 
   useEffect(() => {
@@ -86,6 +92,7 @@ function TemplatesLibraryContent() {
   }, [searchParams]);
 
   const openTemplateModal = (tpl: TemplatePreset) => {
+    if (isTemplateLocked(tpl, nowMs)) return;
     setSelectedTemplate(tpl);
     setShowSamplePhotos(true);
     setPreviewFilter(undefined);
@@ -94,6 +101,7 @@ function TemplatesLibraryContent() {
   const filteredTemplates = useMemo(() => {
     const q = query.trim().toLowerCase();
     const list = BUILTIN_TEMPLATES.filter((tpl) => {
+      if (category === "all" && !q && tpl.category === "birthday_special") return false;
       if (category !== "all" && tpl.category !== category) return false;
       if (q) {
         const title = (locale === "id" ? tpl.title_id : tpl.title_en).toLowerCase();
@@ -111,11 +119,20 @@ function TemplatesLibraryContent() {
     });
 
     return [...list].sort((a, b) => {
+      const lockDiff = Number(isTemplateLocked(a, nowMs)) - Number(isTemplateLocked(b, nowMs));
+      if (lockDiff !== 0) return lockDiff;
       if (sortBy === "popular") return b.popularity_score - a.popularity_score;
-      if (sortBy === "newest") return Number(b.is_new) - Number(a.is_new) || b.popularity_score - a.popularity_score;
-      return Number(b.is_featured) - Number(a.is_featured) || b.popularity_score - a.popularity_score;
+      const newDiff = Number(isTemplateNew(b, nowMs)) - Number(isTemplateNew(a, nowMs));
+      const addedDiff = getTemplateAddedTimestamp(b) - getTemplateAddedTimestamp(a);
+      if (sortBy === "newest") return newDiff || addedDiff || b.popularity_score - a.popularity_score;
+      return (
+        newDiff ||
+        addedDiff ||
+        Number(b.is_featured) - Number(a.is_featured) ||
+        b.popularity_score - a.popularity_score
+      );
     });
-  }, [category, query, sortBy, locale]);
+  }, [category, query, sortBy, locale, nowMs]);
 
   const handleToggleFavorite = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -211,43 +228,65 @@ function TemplatesLibraryContent() {
             const isFav = favorites.includes(tpl.id);
             const title = locale === "id" ? tpl.title_id : tpl.title_en;
             const shotCount = getSlotCount(tpl.document);
+            const locked = isTemplateLocked(tpl, nowMs);
+
             return (
               <div
                 key={tpl.id}
-                onClick={() => openTemplateModal(tpl)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") openTemplateModal(tpl);
+                onClick={() => {
+                  if (!locked) openTemplateModal(tpl);
                 }}
-                className="group cursor-pointer rounded-2xl bg-brand-surface nb-box nb-box-interactive overflow-hidden flex flex-col"
+                role="button"
+                tabIndex={locked ? -1 : 0}
+                aria-disabled={locked}
+                onKeyDown={(e) => {
+                  if (!locked && (e.key === "Enter" || e.key === " ")) openTemplateModal(tpl);
+                }}
+                className={`group rounded-2xl bg-brand-surface nb-box overflow-hidden flex flex-col ${
+                  locked ? "cursor-not-allowed opacity-90" : "cursor-pointer nb-box-interactive"
+                }`}
               >
                 <div className="bg-brand-surfaceMuted p-4 flex items-center justify-center relative h-[260px]">
                   <TemplateCanvasPreview
                     document={tpl.document}
                     slotImages={getSampleSlotImages(shotCount)}
                     scale={0.28}
-                    className="max-h-[220px] max-w-full w-auto h-auto object-contain group-hover:scale-[1.03] transition-transform"
+                    className={`max-h-[220px] max-w-full w-auto h-auto object-contain transition-transform ${
+                      locked ? "blur-[2px] brightness-75" : "group-hover:scale-[1.03]"
+                    }`}
                   />
 
-                  <button
-                    type="button"
-                    onClick={(e) => handleToggleFavorite(e, tpl.id)}
-                    aria-label={t.templates.favorite}
-                    className="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-white/95 flex items-center justify-center ps-sticky-btn transition-transform duration-150 hover:scale-105 active:scale-90"
-                  >
-                    {poppingFavId === tpl.id && (
-                      <span className="absolute inset-0 rounded-full bg-rose-400/50 animate-ping pointer-events-none" />
-                    )}
-                    <Heart
-                      className={`relative w-4 h-4 transition-transform duration-300 ${
-                        poppingFavId === tpl.id ? "scale-125" : "scale-100"
-                      } ${isFav ? "text-[#EF4444] fill-[#EF4444]" : "text-[#111827]"}`}
-                      strokeWidth={2.25}
-                    />
-                  </button>
+                  {locked && (
+                    <div className="absolute inset-0 bg-black/35 backdrop-blur-[2px] flex flex-col items-center justify-center gap-1.5 p-3 text-center">
+                      <span className="w-10 h-10 rounded-full bg-white/95 text-[#111827] flex items-center justify-center shadow-md">
+                        <Lock className="w-5 h-5" strokeWidth={2.25} />
+                      </span>
+                      <span className="px-2.5 py-1 rounded-full bg-[#111827]/90 text-white text-[11px] font-bold tracking-wide">
+                        {locale === "id" ? "Terbuka 21 Nov" : "Unlocks Nov 21"}
+                      </span>
+                    </div>
+                  )}
 
-                  {tpl.is_new && (
+                  {!locked && (
+                    <button
+                      type="button"
+                      onClick={(e) => handleToggleFavorite(e, tpl.id)}
+                      aria-label={t.templates.favorite}
+                      className="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-white/95 flex items-center justify-center ps-sticky-btn transition-transform duration-150 hover:scale-105 active:scale-90"
+                    >
+                      {poppingFavId === tpl.id && (
+                        <span className="absolute inset-0 rounded-full bg-rose-400/50 animate-ping pointer-events-none" />
+                      )}
+                      <Heart
+                        className={`relative w-4 h-4 transition-transform duration-300 ${
+                          poppingFavId === tpl.id ? "scale-125" : "scale-100"
+                        } ${isFav ? "text-[#EF4444] fill-[#EF4444]" : "text-[#111827]"}`}
+                        strokeWidth={2.25}
+                      />
+                    </button>
+                  )}
+
+                  {isTemplateNew(tpl, nowMs) && (
                     <span className="absolute top-2.5 left-2.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#EF4444] text-white border border-[#991B1B] text-[10px] font-bold">
                       <Sparkles className="w-2.5 h-2.5" />
                       {t.templates.newBadge}
@@ -265,21 +304,34 @@ function TemplatesLibraryContent() {
                     </p>
                   </div>
 
-                  <Link
-                    href={`/photobox?template=${tpl.id}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      addLocalTimelineEntry({
-                        eventType: "template_used",
-                        title,
-                        templateId: tpl.id,
-                      });
-                    }}
-                    className="inline-flex items-center justify-center gap-1.5 w-full h-8 px-3 rounded-full bg-[#A0B0E8] text-[#111827] hover:bg-[#8FA2E3] text-[11px] font-bold whitespace-nowrap ps-sticky-btn"
-                  >
-                    <Camera className="w-3 h-3 shrink-0" strokeWidth={2.25} />
-                    <span className="truncate">{t.templates.useInPhotobox}</span>
-                  </Link>
+                  {locked ? (
+                    <button
+                      type="button"
+                      disabled
+                      className="inline-flex items-center justify-center gap-1.5 w-full h-8 px-3 rounded-full bg-brand-surfaceMuted text-brand-textMuted border border-brand-border text-[11px] font-bold whitespace-nowrap cursor-not-allowed"
+                    >
+                      <Lock className="w-3 h-3 shrink-0" strokeWidth={2.25} />
+                      <span className="truncate">
+                        {locale === "id" ? "Terkunci · 21 Nov" : "Locked · Nov 21"}
+                      </span>
+                    </button>
+                  ) : (
+                    <Link
+                      href={`/photobox?template=${tpl.id}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        addLocalTimelineEntry({
+                          eventType: "template_used",
+                          title,
+                          templateId: tpl.id,
+                        });
+                      }}
+                      className="inline-flex items-center justify-center gap-1.5 w-full h-8 px-3 rounded-full bg-[#A0B0E8] text-[#111827] hover:bg-[#8FA2E3] text-[11px] font-bold whitespace-nowrap ps-sticky-btn"
+                    >
+                      <Camera className="w-3 h-3 shrink-0" strokeWidth={2.25} />
+                      <span className="truncate">{t.templates.useInPhotobox}</span>
+                    </Link>
+                  )}
                 </div>
               </div>
             );

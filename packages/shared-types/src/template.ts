@@ -8,6 +8,7 @@ export type TemplateCategory =
   | "tiktok_feed"
   | "collage"
   | "polaroid"
+  | "birthday_special"
   | "custom";
 
 export type TemplateTheme =

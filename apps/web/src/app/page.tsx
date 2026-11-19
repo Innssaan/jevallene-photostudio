@@ -4,8 +4,8 @@ import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Camera, Check, Cloud, Film, FolderOpen, Heart, ImagePlus, Layers, Pencil, QrCode, Search, Sparkles } from "lucide-react";
-import { BUILTIN_TEMPLATES, getSlotCount } from "@photostudio/shared-types";
+import { ArrowRight, Camera, Check, Cloud, Film, FolderOpen, Heart, ImagePlus, Layers, Lock, Pencil, QrCode, Search, Sparkles } from "lucide-react";
+import { BUILTIN_TEMPLATES, getSlotCount, isTemplateLocked } from "@photostudio/shared-types";
 import {
   EditorSparkleIcon,
   GalleryFanIcon,
@@ -22,7 +22,7 @@ import { useIsNativeApp } from "@/lib/native-app";
 import { getLocalProjects, type LocalProject } from "@/lib/local-store";
 import { getSampleSlotImages } from "@/lib/sample-photos";
 
-type HomeTab = "studio" | "photobox" | "galeri";
+type HomeTab = "photobox" | "studio" | "galeri" | "birthday";
 
 export default function HomePage() {
   const { locale, t } = useI18n();
@@ -31,7 +31,7 @@ export default function HomePage() {
   const isNativeApp = useIsNativeApp();
   const [recentProjects, setRecentProjects] = useState<LocalProject[]>([]);
   const [quickQuery, setQuickQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<HomeTab>("studio");
+  const [activeTab, setActiveTab] = useState<HomeTab>("photobox");
   const [guestName, setGuestName] = useState("");
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
@@ -46,10 +46,13 @@ export default function HomePage() {
     }
   }, []);
 
-  const featuredTemplates = BUILTIN_TEMPLATES.filter((tpl) => tpl.is_featured).slice(0, 4);
+  const featuredTemplates = BUILTIN_TEMPLATES.filter((tpl) => tpl.is_featured && !isTemplateLocked(tpl)).slice(0, 4);
   const photoboxTemplates = BUILTIN_TEMPLATES.filter(
-    (tpl) => tpl.category === "photobox" || Boolean(tpl.document.canvas.overlayImage)
+    (tpl) => !isTemplateLocked(tpl) && (tpl.category === "photobox" || Boolean(tpl.document.canvas.overlayImage))
   ).slice(0, 4);
+  const innssaanBirthdayTemplates = BUILTIN_TEMPLATES.filter(
+    (tpl) => tpl.category === "birthday_special"
+  );
 
   const quickMenu = [
     {
@@ -159,21 +162,37 @@ export default function HomePage() {
     }
   };
 
-  const tabs: { id: HomeTab; label: string; activeCls: string }[] = [
-    {
-      id: "studio",
-      label: "Studio",
-      activeCls: "bg-[#D2F159] text-[#111827] shadow-[0_0_18px_rgba(210,241,89,0.4)]",
-    },
+  const tabs: {
+    id: HomeTab;
+    label: string;
+    shortTag?: string;
+    icon: React.ComponentType<{ className?: string }>;
+    activeCls: string;
+  }[] = [
     {
       id: "photobox",
       label: "Photobox",
-      activeCls: "bg-[#38D1BF] text-[#111827] shadow-[0_0_18px_rgba(56,209,191,0.4)]",
+      icon: Camera,
+      activeCls: "bg-[#38D1BF] text-[#111827] border-[#111827] shadow-[0_6px_18px_rgba(56,209,191,0.38)]",
+    },
+    {
+      id: "studio",
+      label: "Studio",
+      icon: Sparkles,
+      activeCls: "bg-[#D2F159] text-[#111827] border-[#111827] shadow-[0_6px_18px_rgba(210,241,89,0.38)]",
     },
     {
       id: "galeri",
       label: t.nav.gallery,
-      activeCls: "bg-[#FF9EB5] text-[#111827] shadow-[0_0_18px_rgba(255,158,181,0.4)]",
+      icon: FolderOpen,
+      activeCls: "bg-[#FF9EB5] text-[#111827] border-[#111827] shadow-[0_6px_18px_rgba(255,158,181,0.38)]",
+    },
+    {
+      id: "birthday",
+      label: "Innssaan Birthday",
+      shortTag: "21 Nov",
+      icon: Lock,
+      activeCls: "bg-[#FDE047] text-[#111827] border-[#111827] shadow-[0_6px_18px_rgba(250,204,21,0.42)]",
     },
   ];
 
@@ -313,6 +332,50 @@ export default function HomePage() {
                 </span>
               </Link>
             ))}
+          </div>
+        </section>
+
+        {/* Native App: Innssaan Birthday Special Section */}
+        <section className="space-y-2.5">
+          <div className="flex items-center justify-between px-0.5">
+            <h2 className="text-xs font-extrabold uppercase tracking-wider text-brand-textMuted">
+              Innssaan Birthday 🎂 (21 Nov)
+            </h2>
+            <Link href="/templates?filter=birthday_special" className="text-xs font-bold text-brand-accent hover:underline">
+              {t.home.viewAll}
+            </Link>
+          </div>
+          <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-1.5">
+            {innssaanBirthdayTemplates.slice(0, 6).map((tpl) => {
+              const locked = isTemplateLocked(tpl);
+              return (
+                <Link
+                  key={tpl.id}
+                  href={locked ? "/templates?filter=birthday_special" : `/photobox?template=${encodeURIComponent(tpl.id)}`}
+                  className="group shrink-0 w-28 rounded-2xl bg-brand-surface border border-brand-border p-2 flex flex-col gap-1.5"
+                >
+                  <div className="relative aspect-[3/4] rounded-xl bg-brand-surfaceMuted flex items-center justify-center p-1.5 overflow-hidden">
+                    <TemplateCanvasPreview
+                      document={tpl.document}
+                      slotImages={getSampleSlotImages(getSlotCount(tpl.document))}
+                      scale={0.13}
+                      className={`max-h-full w-auto object-contain ${locked ? "blur-[2px] brightness-75" : ""}`}
+                    />
+                    {locked && (
+                      <div className="absolute inset-0 bg-black/35 flex flex-col items-center justify-center gap-1 text-center p-1">
+                        <Lock className="w-4 h-4 text-white" />
+                        <span className="px-1.5 py-0.5 rounded-full bg-black/80 text-white text-[9px] font-bold">
+                          21 Nov
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <span className="text-[10px] font-bold text-brand-text truncate">
+                    {locale === "id" ? tpl.title_id : tpl.title_en}
+                  </span>
+                </Link>
+              );
+            })}
           </div>
         </section>
 
@@ -490,22 +553,34 @@ export default function HomePage() {
         <InstallAppButton locale={locale} variant="banner" />
       </section>
 
-      {/* Colorful Animated 3-Tab Pill Bar (Solid Colors) */}
-      <div className="flex items-center justify-center sm:justify-start">
-        <div className="inline-flex items-center gap-1.5 p-1 rounded-full bg-brand-surface border border-brand-border">
+      {/* Colorful Animated 4-Tab Pill Bar */}
+      <div className="w-full overflow-x-auto no-scrollbar pb-1">
+        <div className="inline-flex min-w-full sm:min-w-0 items-center gap-2 p-1.5 rounded-2xl bg-brand-surface/90 border border-brand-border shadow-xs">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
+            const Icon = tab.icon;
             return (
               <button
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-5 py-1.5 rounded-full text-[13px] transition-transform duration-150 hover:scale-105 active:scale-95 ${isActive
-                    ? `${tab.activeCls} font-bold ps-sticky-btn`
-                    : "border-[1.5px] border-transparent text-brand-textMuted hover:text-brand-text font-medium"
-                  }`}
+                className={`shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] sm:text-[13px] border transition-all duration-200 hover:-translate-y-0.5 active:scale-95 ${
+                  isActive
+                    ? `${tab.activeCls} font-extrabold`
+                    : "border-transparent bg-brand-surfaceMuted/50 text-brand-textMuted hover:text-brand-text hover:bg-brand-surfaceMuted font-semibold"
+                }`}
               >
-                {tab.label}
+                <Icon className="w-3.5 h-3.5 shrink-0" />
+                <span>{tab.label}</span>
+                {tab.shortTag && (
+                  <span
+                    className={`px-1.5 py-0.5 rounded-full text-[9px] font-extrabold ${
+                      isActive ? "bg-[#111827] text-[#FDE047]" : "bg-[#FDE047]/25 text-brand-text"
+                    }`}
+                  >
+                    {tab.shortTag}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -722,19 +797,19 @@ export default function HomePage() {
                   <Camera className="w-4 h-4" />
                 </div>
               </div>
-              <div className="h-24 rounded-xl bg-white/80 border border-[#111827]/15 p-1.5 flex items-center justify-center gap-2 overflow-hidden">
+              <div className="h-40 sm:h-48 rounded-xl bg-white/90 border border-[#111827]/15 p-2.5 flex items-center justify-center gap-3 overflow-hidden">
                 <TemplateCanvasPreview
                   document={photoboxTemplates[0].document}
                   slotImages={getSampleSlotImages(getSlotCount(photoboxTemplates[0].document))}
-                  scale={0.1}
-                  className="h-20 w-auto rounded shadow-xs"
+                  scale={0.22}
+                  className="max-h-full max-w-full w-auto h-auto object-contain rounded-md shadow-sm group-hover:scale-[1.03] transition-transform"
                 />
                 {photoboxTemplates[1] && (
                   <TemplateCanvasPreview
                     document={photoboxTemplates[1].document}
                     slotImages={getSampleSlotImages(getSlotCount(photoboxTemplates[1].document))}
-                    scale={0.1}
-                    className="h-20 w-auto rounded shadow-xs hidden sm:block"
+                    scale={0.22}
+                    className="max-h-full max-w-full w-auto h-auto object-contain rounded-md shadow-sm hidden sm:block group-hover:scale-[1.03] transition-transform"
                   />
                 )}
               </div>
@@ -1017,6 +1092,93 @@ export default function HomePage() {
                 <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
               </div>
             </Link>
+          </div>
+        </section>
+      )}
+
+      {/* TAB 4: INNSSAAAN BIRTHDAY SPECIAL — Locked until 21 Nov */}
+      {activeTab === "birthday" && (
+        <section className="space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <h2 className="text-[15px] font-bold text-brand-text">
+                {locale === "id"
+                  ? "Spesial Ulang Tahun ke-23 Innssaan • 21 November 🎂"
+                  : "Innssaan's 23rd Birthday Special • November 21 🎂"}
+              </h2>
+              <p className="text-[12px] text-brand-textMuted">
+                {locale === "id"
+                  ? "Koleksi khusus (terkunci & otomatis terbuka pada 21 November)."
+                  : "Dedicated special collection (locked & automatically unlocks on November 21)."}
+              </p>
+            </div>
+            <Link
+              href="/templates?filter=birthday_special"
+              className="text-[13px] font-semibold text-[#D9621F] hover:underline shrink-0"
+            >
+              {locale === "id" ? "Lihat semua" : "View all"}
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {innssaanBirthdayTemplates.map((tpl) => {
+              const title = locale === "id" ? tpl.title_id : tpl.title_en;
+              const locked = isTemplateLocked(tpl);
+              const shotCount = getSlotCount(tpl.document);
+
+              return locked ? (
+                <div
+                  key={tpl.id}
+                  className="rounded-2xl bg-brand-surface border border-brand-border p-3 flex flex-col justify-between gap-2.5 opacity-90 cursor-not-allowed"
+                >
+                  <div className="relative h-36 rounded-xl bg-brand-surfaceMuted p-2 flex items-center justify-center overflow-hidden">
+                    <TemplateCanvasPreview
+                      document={tpl.document}
+                      slotImages={getSampleSlotImages(shotCount)}
+                      scale={0.18}
+                      className="max-h-full max-w-full w-auto h-auto object-contain blur-[2px] brightness-75"
+                    />
+                    <div className="absolute inset-0 bg-black/35 backdrop-blur-[2px] flex flex-col items-center justify-center gap-1 p-2 text-center">
+                      <span className="w-8 h-8 rounded-full bg-white/95 text-[#111827] flex items-center justify-center shadow">
+                        <Lock className="w-4 h-4" />
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full bg-[#111827]/90 text-white text-[10px] font-bold">
+                        {locale === "id" ? "Terbuka 21 Nov" : "Unlocks Nov 21"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[12px] font-bold text-brand-text truncate">{title}</div>
+                    <div className="text-[10px] text-brand-textMuted mt-0.5 flex items-center gap-1">
+                      <Lock className="w-3 h-3 shrink-0" />
+                      <span>{locale === "id" ? "Terkunci · 21 Nov" : "Locked · Nov 21"}</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <Link
+                  key={tpl.id}
+                  href={`/photobox?template=${encodeURIComponent(tpl.id)}`}
+                  className="group rounded-2xl bg-[#FEF3C7] p-3 flex flex-col justify-between gap-2.5 ps-sticky-card ps-scratch-surface"
+                >
+                  <div className="h-36 rounded-xl bg-white/90 border border-[#111827]/15 p-2 flex items-center justify-center overflow-hidden">
+                    <TemplateCanvasPreview
+                      document={tpl.document}
+                      slotImages={getSampleSlotImages(shotCount)}
+                      scale={0.18}
+                      className="max-h-full max-w-full w-auto h-auto object-contain group-hover:scale-[1.03] transition-transform"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[12px] font-bold text-[#111827] truncate">{title}</div>
+                    <div className="text-[10px] font-semibold text-[#92400E] mt-0.5 flex items-center justify-between">
+                      <span>{locale === "id" ? "Pakai Sekarang" : "Use Now"}</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         </section>
       )}

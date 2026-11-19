@@ -32,6 +32,7 @@ import {
   getBuiltinTemplateById,
   getSlotCount,
   getUniqueSlots,
+  isTemplateLocked,
   type FilterPreset,
   type TemplateDocument,
 } from "@photostudio/shared-types";
@@ -116,7 +117,8 @@ function PhotoboxStudioContent() {
   // Sync template from URL query param
   useEffect(() => {
     const param = searchParams.get("template");
-    if (param && getBuiltinTemplateById(param)) {
+    const preset = param ? getBuiltinTemplateById(param) : undefined;
+    if (param && preset && !isTemplateLocked(preset)) {
       setSelectedTemplateId(param);
       setCustomGridShots(null);
     }
