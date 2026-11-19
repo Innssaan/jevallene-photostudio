@@ -124,7 +124,7 @@ export function InstallAppButton({
                 </span>
               </div>
               <h3 className="text-sm sm:text-[15px] font-extrabold text-brand-text leading-snug">
-                {isId ? "Install Jevallene App" : "Install Jevallene App"}
+                Install Jevallene PhotoStudio App
               </h3>
               <p className="text-xs text-brand-textMuted leading-relaxed line-clamp-2">
                 {isId
@@ -156,7 +156,7 @@ export function InstallAppButton({
                 <span>Web & .APK</span>
               </span>
               <h3 className="text-[15px] font-extrabold text-[#111827] leading-snug">
-                Install Jevallene App
+                Install Jevallene PhotoStudio App
               </h3>
               <p className="text-[11px] font-medium text-[#111827]/80 leading-relaxed line-clamp-2">
                 {isId
@@ -227,7 +227,7 @@ export function InstallAppButton({
                 <Smartphone className="w-5 h-5 text-brand-accent" />
                 <div>
                   <h3 className="font-display text-sm font-bold text-brand-text">
-                    {isId ? "Install Jevallene PhotoStudio" : "Install Jevallene PhotoStudio"}
+                    Install Jevallene PhotoStudio App
                   </h3>
                   <p className="text-[11px] text-brand-textMuted">
                     {isId
