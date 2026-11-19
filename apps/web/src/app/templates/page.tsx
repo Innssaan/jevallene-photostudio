@@ -189,7 +189,7 @@ function TemplatesLibraryContent() {
         </div>
 
         {/* Sort */}
-        <div className="inline-flex rounded-full border border-brand-border bg-brand-surface p-1 self-start">
+        <div className="inline-flex max-w-full overflow-x-auto no-scrollbar rounded-full border border-brand-border bg-brand-surface p-1 self-start">
           {(
             [
               { id: "featured", label: t.templates.sortFeatured },
@@ -226,13 +226,13 @@ function TemplatesLibraryContent() {
           />
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 sm:flex-wrap sm:pb-0">
           {CATEGORIES.map((cat) => (
             <button
               key={cat.id}
               type="button"
               onClick={() => setCategory(cat.id)}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${
+              className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${
                 category === cat.id
                   ? "bg-[#38D1BF] text-[#111827] font-bold ps-sticky-btn"
                   : "bg-brand-surfaceMuted/50 border border-brand-border text-brand-textMuted hover:text-brand-text"

@@ -387,7 +387,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       <circle cx="36.5" cy="18" r="2.6" fill="#E5142A" />
                     </svg>
                     <span className="text-sm font-extrabold tracking-tight text-brand-text truncate">
-                      Jevallene
+                      Jevallene PhotoStudio App
                     </span>
                   </Link>
                 </>
