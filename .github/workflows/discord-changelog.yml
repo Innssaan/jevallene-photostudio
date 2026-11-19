@@ -1,0 +1,84 @@
+name: Discord Changelog Notification
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  notify-discord:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.DISCORD_WEBHOOK_URL != '' }}
+    steps:
+      - name: Send Changelog Embed to Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: |
+          node -e '
+            const gh = JSON.parse(process.env.GITHUB_CONTEXT);
+            const commits = Array.isArray(gh.event?.commits) ? gh.event.commits : [];
+            const lines = commits
+              .slice(0, 10)
+              .map((c) => {
+                const msg = String(c.message || "").split("\n")[0].trim();
+                const shortSha = String(c.id || "").slice(0, 7);
+                const url = c.url || gh.event?.compare || "";
+                return "• [`" + shortSha + "`](" + url + ") " + msg;
+              });
+
+            if (commits.length > 10) {
+              lines.push("• ...dan " + (commits.length - 10) + " perubahan lainnya");
+            }
+
+            const description =
+              lines.length > 0
+                ? lines.join("\n")
+                : "Update baru telah di-push ke branch `main`.";
+
+            const payload = {
+              username: "Jevallene PhotoStudio Changelog",
+              embeds: [
+                {
+                  title: "🚀 Update & Changelog Baru — Jevallene PhotoStudio",
+                  url: gh.event?.compare || "https://jevallene-photostudio.vercel.app",
+                  description: description.slice(0, 4000),
+                  color: 3723711,
+                  fields: [
+                    {
+                      name: "Branch",
+                      value: "`" + (gh.ref_name || "main") + "`",
+                      inline: true,
+                    },
+                    {
+                      name: "Author",
+                      value: gh.actor || "innssaan",
+                      inline: true,
+                    },
+                    {
+                      name: "Live App",
+                      value: "[jevallene-photostudio.vercel.app](https://jevallene-photostudio.vercel.app)",
+                      inline: false,
+                    },
+                  ],
+                  footer: {
+                    text: "Jevallene PhotoStudio • Auto Changelog",
+                  },
+                  timestamp: new Date().toISOString(),
+                },
+              ],
+            };
+
+            fetch(process.env.DISCORD_WEBHOOK_URL, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            }).then(async (res) => {
+              if (!res.ok) {
+                const body = await res.text();
+                console.error("Discord webhook failed:", res.status, body);
+                process.exit(1);
+              }
+              console.log("Discord changelog notification sent!");
+            });
+          '
