@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useEffect, useMemo, useState } from "react";
+import React, { Suspense, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -53,8 +53,11 @@ function TemplatesLibraryContent() {
   const searchParams = useSearchParams();
 
   const [query, setQuery] = useState("");
+  const deferredQuery = useDeferredValue(query);
   const [category, setCategory] = useState<"all" | TemplateCategory>("all");
   const [sortBy, setSortBy] = useState<SortMode>("featured");
+  const [visibleLimit, setVisibleLimit] = useState(24);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [poppingFavId, setPoppingFavId] = useState<string | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<TemplatePreset | null>(null);
@@ -99,7 +102,7 @@ function TemplatesLibraryContent() {
   };
 
   const filteredTemplates = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = deferredQuery.trim().toLowerCase();
     const list = BUILTIN_TEMPLATES.filter((tpl) => {
       if (category === "all" && !q && tpl.category === "birthday_special") return false;
       if (category !== "all" && tpl.category !== category) return false;
@@ -132,7 +135,31 @@ function TemplatesLibraryContent() {
         b.popularity_score - a.popularity_score
       );
     });
-  }, [category, query, sortBy, locale, nowMs]);
+  }, [category, deferredQuery, sortBy, locale, nowMs]);
+
+  useEffect(() => {
+    setVisibleLimit(24);
+  }, [category, deferredQuery, sortBy]);
+
+  useEffect(() => {
+    const el = loadMoreRef.current;
+    if (!el || visibleLimit >= filteredTemplates.length) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setVisibleLimit((v) => Math.min(filteredTemplates.length, v + 24));
+        }
+      },
+      { rootMargin: "400px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [visibleLimit, filteredTemplates.length]);
+
+  const visibleTemplates = useMemo(
+    () => filteredTemplates.slice(0, visibleLimit),
+    [filteredTemplates, visibleLimit]
+  );
 
   const handleToggleFavorite = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -223,8 +250,9 @@ function TemplatesLibraryContent() {
           {t.templates.empty}
         </div>
       ) : (
+        <>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {filteredTemplates.map((tpl) => {
+          {visibleTemplates.map((tpl) => {
             const isFav = favorites.includes(tpl.id);
             const title = locale === "id" ? tpl.title_id : tpl.title_en;
             const shotCount = getSlotCount(tpl.document);
@@ -337,6 +365,20 @@ function TemplatesLibraryContent() {
             );
           })}
         </div>
+        {visibleLimit < filteredTemplates.length && (
+          <div ref={loadMoreRef} className="flex justify-center pt-4">
+            <button
+              type="button"
+              onClick={() => setVisibleLimit((v) => Math.min(filteredTemplates.length, v + 24))}
+              className="px-5 py-2.5 rounded-full border border-brand-border bg-brand-surface text-xs font-bold text-brand-text hover:border-brand-accent"
+            >
+              {locale === "id"
+                ? `Muat Lebih Banyak (${filteredTemplates.length - visibleLimit} tersisa)`
+                : `Load More (${filteredTemplates.length - visibleLimit} remaining)`}
+            </button>
+          </div>
+        )}
+        </>
       )}
 
       {/* Detailed Template Inspector Modal */}

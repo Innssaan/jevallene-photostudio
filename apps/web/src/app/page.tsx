@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -46,12 +46,20 @@ export default function HomePage() {
     }
   }, []);
 
-  const featuredTemplates = BUILTIN_TEMPLATES.filter((tpl) => tpl.is_featured && !isTemplateLocked(tpl)).slice(0, 4);
-  const photoboxTemplates = BUILTIN_TEMPLATES.filter(
-    (tpl) => !isTemplateLocked(tpl) && (tpl.category === "photobox" || Boolean(tpl.document.canvas.overlayImage))
-  ).slice(0, 4);
-  const innssaanBirthdayTemplates = BUILTIN_TEMPLATES.filter(
-    (tpl) => tpl.category === "birthday_special"
+  const featuredTemplates = useMemo(
+    () => BUILTIN_TEMPLATES.filter((tpl) => tpl.is_featured && !isTemplateLocked(tpl)).slice(0, 4),
+    []
+  );
+  const photoboxTemplates = useMemo(
+    () =>
+      BUILTIN_TEMPLATES.filter(
+        (tpl) => !isTemplateLocked(tpl) && (tpl.category === "photobox" || Boolean(tpl.document.canvas.overlayImage))
+      ).slice(0, 4),
+    []
+  );
+  const innssaanBirthdayTemplates = useMemo(
+    () => BUILTIN_TEMPLATES.filter((tpl) => tpl.category === "birthday_special"),
+    []
   );
 
   const quickMenu = [

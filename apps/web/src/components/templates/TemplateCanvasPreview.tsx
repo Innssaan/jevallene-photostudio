@@ -55,19 +55,21 @@ export const TemplateCanvasPreview = memo(function TemplateCanvasPreview({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    void renderTemplateToCanvas(canvas, doc, {
-      slotImages,
-      overrideFilter,
-      adjustments,
-      effects,
-      customCaption,
-      scale,
-    }).then(() => {
+    const rafId = window.requestAnimationFrame(() => {
       if (cancelled) return;
+      void renderTemplateToCanvas(canvas, doc, {
+        slotImages,
+        overrideFilter,
+        adjustments,
+        effects,
+        customCaption,
+        scale,
+      });
     });
 
     return () => {
       cancelled = true;
+      window.cancelAnimationFrame(rafId);
     };
   }, [inView, doc, slotImages, overrideFilter, adjustments, effects, customCaption, scale]);
 
