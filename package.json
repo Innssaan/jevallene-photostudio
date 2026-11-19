@@ -1,0 +1,16 @@
+{
+  "name": "photostudio",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/web",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm --workspace=@photostudio/web run dev",
+    "build": "npm --workspace=@photostudio/shared-types run build && npm --workspace=@photostudio/web run build",
+    "lint": "npm --workspace=@photostudio/web run lint",
+    "typecheck": "npm --workspace=@photostudio/shared-types run typecheck && npm --workspace=@photostudio/web run typecheck",
+    "test": "npm --workspace=@photostudio/shared-types run test"
+  }
+}
